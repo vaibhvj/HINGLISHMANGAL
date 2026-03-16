@@ -289,10 +289,10 @@ footer{text-align:center;padding:22px;color:var(--muted);font-size:12px;
 
 </div>
 
-<footer>Hindi Unicode CSV Converter &nbsp;·&nbsp; Powered by Claude AI &nbsp;·&nbsp; Data stays in your browser only<br><span style="margin-top:4px;display:inline-block">Designed &amp; Maintained by <strong>Vaibhav Vijay</strong> &nbsp;·&nbsp; Contact: <a href="mailto:vaibhvj00@aol.com" style="color:var(--saffron2);text-decoration:none">vaibhvj00@aol.com</a></span></footer>
+<footer>Hindi Unicode CSV Converter &nbsp;·&nbsp; Powered by Claude AI &nbsp;·&nbsp; Data stays in your browser only<br><span style="margin-top:4px;display:inline-block">Designed &amp; Maintained by <strong>Vaibhav Vijay</strong> &nbsp;·&nbsp; Contact: <a href="/cdn-cgi/l/email-protection#e09681898288968ad0d0a0818f8cce838f8d" style="color:var(--saffron2);text-decoration:none"><span class="__cf_email__" data-cfemail="780e19111a100e12484838191714561b1715">[email&#160;protected]</span></a></span></footer>
 <div class="toast" id="toast"></div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // STATE
 let rows=[], hdrs=[], selCols=new Set(), results={}, running=false;
 
@@ -302,7 +302,7 @@ Proper nouns: transliterate phonetically into Devanagari.`;
 
 // API KEY
 // Proxy URL — यहाँ अपना proxy URL डालें
-const PROXY_URL = 'https://censustraslate.vaibhvj00.workers.dev/translate'; // e.g. https://my-worker.username.workers.dev/translate
+const PROXY_URL = 'https://censustraslate.vaibhvj00.workers.dev/translate';
 function getKey(){return (document.getElementById('apiKeyInput').value||'').trim();}
 function onKeyInput(){
   const k=getKey(),s=document.getElementById('kStatus'),inp=document.getElementById('apiKeyInput');
@@ -584,14 +584,4 @@ function setStep(n){
   }
 }
 function esc(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-let toastT;
-function toast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
-  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3400);
-}
-</script>
-</body>
-</html>
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&q

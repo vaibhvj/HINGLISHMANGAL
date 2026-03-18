@@ -166,7 +166,7 @@ footer a:hover{text-decoration:underline}
   <div class="logo-ring">🌐</div>
   <div class="header-text">
     <h1>CSV → Hindi Unicode Converter</h1>
-    <p>Upload CSV · Column चुनें · Claude AI से Hindi में Convert · Download</p>
+    <p>Upload CSV · Column चुनें · MyMemory · Free · No API Key · Download</p>
   </div>
 </header>
 
@@ -238,7 +238,7 @@ footer a:hover{text-decoration:underline}
 </div>
 
 <footer>
-  Hindi Unicode CSV Converter &nbsp;·&nbsp; Powered by Claude AI &nbsp;·&nbsp; Data stays in your browser only<br>
+  Hindi Unicode CSV Converter &nbsp;·&nbsp; Free Translation · No API Key Required<br>
   Designed &amp; Maintained by <strong>Vaibhav Vijay</strong> &nbsp;·&nbsp; Contact: <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#118;&#97;&#105;&#98;&#104;&#118;&#106;&#48;&#48;&#64;&#97;&#111;&#108;&#46;&#99;&#111;&#109;">vaibhvj00&#64;aol.com</a>
 </footer>
 <div class="toast" id="toast"></div>
@@ -247,12 +247,74 @@ footer a:hover{text-decoration:underline}
 // ── STATE ──
 let rows=[], hdrs=[], selCols=new Set(), results={}, running=false;
 
-// ── WORKER URL — both root and /translate tried automatically ──
-const WORKER_BASE = 'https://censustraslate.vaibhvj00.workers.dev';
+// ══════════════════════════════════════════════════════════
+// TRANSLATION ENGINE — Google Translate (free) + JS fallback
+// ══════════════════════════════════════════════════════════
 
-const SYS = `You are a Hindi translator. Translate the given English or Hinglish text into Hindi Devanagari script.
-Output ONLY the Hindi Devanagari text. No explanation, no English words, nothing else.
-Proper nouns: transliterate phonetically into Devanagari.`;
+// ── Fallback: JS dictionary for when Google is unavailable ──
+const DICT = {
+  'village':'ग्राम','gram':'ग्राम','grama':'ग्राम','gaon':'गाँव','town':'कस्बा',
+  'city':'शहर','district':'जिला','tehsil':'तहसील','block':'खण्ड','ward':'वार्ड',
+  'nagar':'नगर','pura':'पुरा','puri':'पुरी','pur':'पुर','garh':'गढ़','ganj':'गंज',
+  'kalan':'कलां','khurd':'खुर्द','khera':'खेड़ा','basti':'बस्ती','tola':'टोला',
+  'north':'उत्तर','south':'दक्षिण','east':'पूर्व','west':'पश्चिम',
+  'new':'नया','old':'पुराना','big':'बड़ा','small':'छोटा','bada':'बड़ा','chota':'छोटा',
+  'colony':'कॉलोनी','mohalla':'मोहल्ला','road':'रोड','mafi':'माफ़ी',
+  'singh':'सिंह','devi':'देवी','kumar':'कुमार','lal':'लाल','ram':'राम',
+  'panchayat':'पंचायत','samiti':'समिति','mandal':'मण्डल',
+};
+
+const PLACES = {
+  'raipur':'रायपुर','jaipur':'जयपुर','jodhpur':'जोधपुर','udaipur':'उदयपुर',
+  'ajmer':'अजमेर','kota':'कोटा','bikaner':'बीकानेर','alwar':'अलवर',
+  'bharatpur':'भरतपुर','sikar':'सीकर','pali':'पाली','nagaur':'नागौर',
+  'jhunjhunu':'झुंझुनू','churu':'चुरू','barmer':'बाड़मेर','jalore':'जालोर',
+  'sirohi':'सिरोही','dungarpur':'डूंगरपुर','banswara':'बाँसवाड़ा',
+  'chittorgarh':'चित्तौड़गढ़','bhilwara':'भीलवाड़ा','tonk':'टोंक',
+  'bewar':'बेवाड़','bevar':'बेवाड़','kekri':'केकड़ी','kishangarh':'किशनगढ़',
+  'delhi':'दिल्ली','mumbai':'मुंबई','lucknow':'लखनऊ','agra':'आगरा',
+};
+
+function jsFallback(text) {
+  const lower = text.trim().toLowerCase();
+  if (PLACES[lower]) return PLACES[lower];
+  const words = text.trim().split(/\s+/);
+  return words.map(word => {
+    const w = word.toLowerCase();
+    if (DICT[w]) return DICT[w];
+    if (PLACES[w]) return PLACES[w];
+    for (const [eng, hi] of Object.entries(DICT)) {
+      if (w.endsWith(eng) && w.length > eng.length) {
+        return w.slice(0, w.length - eng.length) + hi;
+      }
+    }
+    return word;
+  }).join(' ');
+}
+
+// ── MyMemory API (free, no key, 5000 words/day) ──
+async function myMemoryTranslate(text) {
+  const url = 'https://api.mymemory.translated.net/get?q='
+    + encodeURIComponent(text) + '&langpair=en|hi';
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('MyMemory HTTP ' + res.status);
+  const data = await res.json();
+  if (data.responseStatus !== 200) throw new Error(data.responseMessage || 'API error');
+  const out = (data.responseData?.translatedText || '').trim();
+  if (!out || out.toLowerCase() === text.toLowerCase()) throw new Error('No translation');
+  return out;
+}
+
+// ── Main: MyMemory first, JS dictionary fallback ──
+async function callAPI(text) {
+  await new Promise(r => setTimeout(r, 100));
+  try {
+    return await myMemoryTranslate(text);
+  } catch(e) {
+    console.warn('MyMemory fallback:', e.message);
+    return jsFallback(text);
+  }
+}
 
 // ── FILE UPLOAD ──
 const fi  = document.getElementById('fi');
@@ -404,37 +466,7 @@ function updStats() {
 }
 
 // ── API CALL — tries /translate first, then root ──
-async function callAPI(text) {
-  // Try /translate endpoint first, fallback to root
-  const endpoints = [WORKER_BASE + '/translate', WORKER_BASE + '/'];
-  let lastErr = '';
 
-  for (const url of endpoints) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
-      });
-      if (res.status === 404) continue; // try next endpoint
-      if (!res.ok) {
-        let msg = 'HTTP ' + res.status;
-        try { const d = await res.json(); msg = d.error || msg; } catch {}
-        if (res.status === 429) throw new Error('Rate limit — थोड़ी देर बाद retry करें');
-        throw new Error(msg);
-      }
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      const out = (data.hindi || '').trim();
-      if (!out) throw new Error('Worker से empty response आई');
-      return out;
-    } catch (e) {
-      if (e.message.includes('Rate limit')) throw e;
-      lastErr = e.message;
-    }
-  }
-  throw new Error('Worker error: ' + lastErr);
-}
 
 // ── CONVERSION ──
 async function startConv() {
